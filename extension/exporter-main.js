@@ -1,5 +1,6 @@
-// SAP Cloud ALM Test Preparation – exportiert alle Testfälle mit Fortschritt/ETA.
-// In der Testfallliste in der DevTools-Konsole ausführen.
+// SCCE – Skyway CALM Chrome Extension.
+// Dieser Seitenkontext-Exporter kann über das Popup injiziert oder direkt in
+// der Cloud-ALM-DevTools-Konsole ausgeführt werden.
 (() => {
   'use strict';
 
