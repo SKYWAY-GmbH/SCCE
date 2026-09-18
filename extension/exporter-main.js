@@ -87,23 +87,17 @@
 
   async function fetchJson(id) {
     const encoded = encodeURIComponent(id);
-    const urls = [
-      `${SERVICE}TestCases(${encoded})?$expand=tags`,
-      `${SERVICE}TestCases(${encoded})`,
-    ];
-    let lastError;
+    const url = `${SERVICE}TestCases(${encoded})?$expand=tags`;
+    let lastError = new Error('Keine Detailantwort erhalten.');
     for (let attempt = 1; attempt <= DETAIL_RETRIES; attempt += 1) {
-      let hadHttpError = false;
       try {
-        for (const url of urls) {
-          const response = await fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json' } });
-          if (response.ok) return await response.json();
-          // CALM currently responds with HTTP 500 to a nested $select on tags.
-          // Try the unfiltered expand and then the plain entity URL before retrying.
-          lastError = new Error(`HTTP ${response.status} ${response.statusText || ''}`.trim());
-          hadHttpError = true;
-        }
-        if (hadHttpError) throw lastError;
+        const response = await fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+        if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText || ''}`.trim());
+        const json = await response.json();
+        const hasTags = Object.prototype.hasOwnProperty.call(json, 'tags')
+          || Object.prototype.hasOwnProperty.call(json?.manualtestcase || {}, 'tags');
+        if (!hasTags) throw new Error('Detailantwort enthält kein tags-Feld. Export wird abgebrochen, damit kein Teil-Export entsteht.');
+        return json;
       } catch (error) {
         lastError = error;
         if (attempt < DETAIL_RETRIES) await sleep(400 * 2 ** (attempt - 1));
