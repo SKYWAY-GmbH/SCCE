@@ -22,7 +22,13 @@
     .card h3 { margin-top:0; }
     ol, ul { padding-left:24px; }
     li { margin:8px 0; }
-    code { padding:2px 5px; border-radius:5px; background:#eef3f9; color:#15345e; font-size:.92em; }
+    code { padding:2px 5px; border-radius:5px; background:#eef3f9; color:#15345e; font-size:.92em; overflow-wrap:anywhere; }
+    pre code { color:inherit; background:transparent; padding:0; }
+    .table-wrap { overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; font-size:14px; }
+    th,td { text-align:left; vertical-align:top; border-bottom:1px solid var(--line); padding:12px 10px; }
+    th { background:var(--soft); }
+    a { color:#075fdb; }
     pre { overflow:auto; padding:16px; border-radius:11px; background:#172033; color:#e9f0fb; font-size:13px; }
     .note { border-left:4px solid var(--blue); padding:10px 14px; background:#eef5ff; }
     .good { color:var(--green); font-weight:700; }
@@ -33,10 +39,13 @@
 </head>
 <body>
   <main>
+    <aside class="note" aria-label="Autorenhinweis">[!NOTE] 🤖 <strong>GPT-6 responding on behalf of beastyrabbit</strong></aside>
     <header>
       <div class="eyebrow">SCCE · Skyway CALM Chrome Extension</div>
       <h1>Wie der SAP-Cloud-ALM-Export funktioniert</h1>
-      <p class="lede">Diese Seite beschreibt den ersten Helfer der Extension, den Excel-Export für Testfälle, und zeigt den Weg vom DevTools-Prototyp zu einer Chrome-Erweiterung.</p>
+      <p class="lede">Entwicklungsgrundlage für den ersten Helfer: Testfälle mit Tags und Änderungsdaten als Excel herunterladen.</p>
+      <p>Stand: 18. September 2026. <a href="https://github.com/SKYWAY-GmbH/SCCE">Öffentliches Repository SKYWAY-GmbH/SCCE</a>.</p>
+      <p>Das Konsolenskript wurde in einer angemeldeten Test-Preparation-Seite verwendet und eine erzeugte Excel-Datei inhaltlich geprüft. Das Repository enthält zusätzlich ein noch nicht im Browser getestetes Manifest-V3-Grundgerüst. Die folgenden Abschnitte unterscheiden vorhandenes Verhalten und noch umzusetzende Anforderungen.</p>
     </header>
 
     <section>
@@ -51,28 +60,68 @@
           <path d="M210 94 H270" stroke="#1677ff" stroke-width="3" marker-end="url(#arrow)"/><path d="M460 94 H520" stroke="#1677ff" stroke-width="3" marker-end="url(#arrow)"/><path d="M710 94 H770" stroke="#1677ff" stroke-width="3" marker-end="url(#arrow)"/>
         </g>
       </svg>
-      <p class="caption">Die Daten bleiben im Browser. SCCE nutzt die bereits angemeldete Cloud-ALM-Seite und sendet nichts an einen eigenen Server.</p>
+      <p class="caption">Die Requests gehen vom Browser an den bestehenden CALM-Tenant. Die Verarbeitung und die Erstellung der Excel-Datei erfolgen lokal. SCCE hat keinen eigenen Backend-Service.</p>
     </section>
 
     <section>
       <h2>Was das ursprüngliche Konsolenskript macht</h2>
       <ol>
-        <li>Es sucht in der UI5-Control-Registry nach der Testfalltabelle, bevorzugt nach der Tabelle mit der ID <code>tableTCO</code>.</li>
-        <li>Es liest die Gesamtzahl über das Binding und fordert die Kontexte blockweise mit <code>requestContexts</code> an. Dadurch werden auch lazy geladene Zeilen erfasst.</li>
+        <li>Es sucht über <code>sap.ui.core.Element.registry.all()</code> nach <code>sap.m.Table</code>-Controls und deren <code>getBinding('items')</code>. Bevorzugt wird eine Control-ID, die <code>tableTCO</code> enthält. UI5 stellt einer ID oft Komponentenpräfixe voran.</li>
+        <li>Es liest die Gesamtzahl über <code>binding.getLength()</code> und fordert mit <code>binding.requestContexts(start, length)</code> jeweils bis zu 100 Kontexte an. <code>context.getObject()</code> liefert die Datensätze. Dadurch hängt der Export nicht von den gerenderten Tabellenzeilen ab.</li>
         <li>Für jede Testcase-ID fragt es den Detaildatensatz über den relativen OData-Pfad <code>/ui/tmService-ui/v1/odata/v4/ManualTestCaseService/TestCases(&lt;ID&gt;)?$expand=tags</code> ab.</li>
         <li>Es übernimmt ID, Titel, Tags, Bearbeiter und Änderungszeitpunkt, zeigt den Fortschritt mit ETA an und erzeugt die XLSX-Datei im Browser.</li>
       </ol>
       <div class="note"><strong>Wichtig:</strong> Die Anfrage verwendet <code>credentials: "same-origin"</code>. Dadurch werden die Cookies der bereits geöffneten Cloud-ALM-Sitzung verwendet. SCCE braucht kein Passwort und speichert kein Token.</div>
+      <p>Die Listenabfrage verwendet das bestehende Binding mit dessen Projektfilter, Suchbegriff und weiteren Filtern. Sie exportiert alle Treffer dieser Liste, keine tenantweite Gesamtliste. Die Detailabfrage läuft direkt über <code>fetch</code>, mit bis zu vier parallelen Arbeitern und drei Versuchen je Datensatz. Zwischen Wiederholungen wartet der Prototyp 400 und 800 Millisekunden.</p>
+      <h3>Wie die Zugriffspunkte ermittelt wurden</h3>
+      <p>Ausgangspunkt war das vorhandene Konsolenskript. Dessen UI5-Binding und relativer Servicepfad wurden in der bereits angemeldeten Chrome-Seite geprüft. Eine gezielte Detailabfrage mit <code>?$expand=tags</code> lieferte die benötigten Eigenschaften. Die Variante <code>?$select=ID,displayId,title,modifiedBy,modifiedAt&amp;$expand=tags($select=tagLabel)</code> lieferte im untersuchten Tenant HTTP 500. Deshalb verwendet der Prototyp die einfachere Expand-Abfrage.</p>
+      <p>Dieser Befund gilt für die untersuchte Anwendung. Er belegt keinen allgemeinen SAP-Fehler. Der Pfad unter <code>/ui/tmService-ui/</code> gehört zum Service der Webanwendung und ist hier kein nachgewiesener, versionierter öffentlicher API-Vertrag.</p>
+    </section>
+
+    <section>
+      <h2>Welche Werte in Excel landen</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Spalte</th><th>Primäre Quelle</th><th>Verarbeitung</th></tr></thead>
+        <tbody>
+          <tr><td>Testcase ID</td><td><code>displayId</code></td><td>Lesbare Testfallnummer. Die interne <code>ID</code> ist die UUID für den OData-Aufruf und dient nur als Ausgabe-Fallback.</td></tr>
+          <tr><td>Testcase Title</td><td><code>title</code></td><td>Text aus dem Detaildatensatz, ersatzweise aus der Liste.</td></tr>
+          <tr><td>Testcase Tag</td><td><code>tags[].tagLabel</code></td><td>Mehrere Bezeichnungen werden dedupliziert und mit Kommas verbunden.</td></tr>
+          <tr><td>Last Changed By</td><td><code>modifiedBy</code></td><td>Der vom Service gelieferte Wert. Der Prototyp fragt keinen zusätzlichen Benutzerdienst zur Namensauflösung ab.</td></tr>
+          <tr><td>Last Change Time/Date</td><td><code>modifiedAt</code></td><td><code>new Date(...).toLocaleString('de-DE')</code>. Zeitzone des Browsers; derzeit Text in Excel, kein nativer Excel-Datumswert.</td></tr>
+        </tbody>
+      </table></div>
+      <p>Die Funktionen <code>tags()</code> und <code>outputRows()</code> enthalten weitere Fallbacks für alternative Feldnamen. Diese sind Kompatibilitätsversuche und nicht für jede CALM-Version bestätigt.</p>
+      <div class="note">Ein explizites <code>tags: []</code> bedeutet „keine Tags“. Eine Antwort ohne die Eigenschaft <code>tags</code> belegt das nicht. Die Extension muss diese beiden Fälle unterscheiden, bevor sie Vollständigkeit meldet.</div>
+      <h3>Die XLSX-Erstellung</h3>
+      <p><code>sheetXml()</code> erzeugt die fünf Spalten, eine fixierte Kopfzeile und einen Autofilter. Alle Zellen sind <code>inlineStr</code>; Inhalte werden als Text geschrieben und für XML maskiert. <code>buildXlsx()</code> packt Worksheet, Workbook, Styles und Beziehungen mit einem kleinen ZIP-Schreiber samt CRC32 in eine echte XLSX-Datei. Es wird keine Excel-Bibliothek von einem CDN geladen.</p>
+      <p><code>download()</code> erzeugt einen <code>Blob</code>, eine temporäre <code>blob:</code>-URL und ein <code>&lt;a download&gt;</code>-Element. Der synthetische Klick stößt den Browserdownload an. Eine Erfolgsmeldung im Prototyp bestätigt diesen Aufruf, nicht das tatsächliche Speichern auf der Festplatte.</p>
+      <h3>Fortschritt und Restzeit</h3>
+      <p>Die Box auf der CALM-Seite hat zwei Phasen: Liste laden und Details lesen. Sie zeigt <code>erledigt / gesamt</code> und einen Balken. Die Restzeit berechnet sich aus <code>(gesamt − erledigt) / (erledigt / vergangene Sekunden)</code>. Da der Prototyp die Zeit seit Exportbeginn verwendet, ist die Schätzung beim Phasenwechsel ungenau. Für die Extension sollte die Detailphase ihre eigene Startzeit erhalten.</p>
     </section>
 
     <section>
       <h2>Wie daraus die Extension wird</h2>
       <div class="grid">
         <div class="card"><h3>1. Popup</h3><p><code>popup.html</code> zeigt den ersten Helfer. Ein Klick fragt den aktiven Tab ab und prüft, ob er zu <code>*.alm.cloud.sap</code> gehört.</p></div>
-        <div class="card"><h3>2. Seitenkontext</h3><p><code>popup.js</code> startet <code>exporter-main.js</code> über <code>chrome.scripting.executeScript</code> in der Hauptwelt der Seite. So sind UI5 und der Session-Kontext erreichbar.</p></div>
+        <div class="card"><h3>2. Seitenkontext</h3><p><code>popup.js</code> injiziert die mitgelieferte Datei <code>exporter-main.js</code> über <code>chrome.scripting.executeScript</code> mit <code>world: 'MAIN'</code>. Dort ist das JavaScript-Objekt <code>sap</code> der Seite erreichbar. Ein normaler Content Script läuft in einer isolierten Welt und sieht dieses Objekt nicht direkt.</p></div>
         <div class="card"><h3>3. Fortschritt</h3><p>Der Exporter erstellt eine kleine Fortschrittsbox direkt in Cloud ALM. Sie zeigt geladene Testfälle, Detailfortschritt und die geschätzte Restzeit.</p></div>
-        <div class="card"><h3>4. Schutz vor Teil-Exports</h3><p>Wenn Detailabfragen scheitern, beendet SCCE den Lauf mit einem Fehler und lädt keine Excel-Datei herunter.</p></div>
+        <div class="card"><h3>4. Rückmeldung</h3><p>Im Grundgerüst bestätigt das Popup nur die Injektion. Der Export läuft anschließend in der Seite weiter, auch wenn das Popup geschlossen wird. Erfolg und Fehler des Exports erscheinen dort. Eine verlässliche Rückmeldung an ein später erneut geöffnetes Popup ist noch zu entwickeln.</p></div>
       </div>
+      <h3>Manifest V3 mit Zugriff nach einem Klick</h3>
+      <pre><code>{
+  "manifest_version": 3,
+  "name": "SCCE",
+  "version": "0.1.0",
+  "permissions": ["activeTab", "scripting"],
+  "action": { "default_popup": "popup.html" }
+}</code></pre>
+      <p><code>activeTab</code> gewährt nach dem Klick auf das Extension-Symbol vorübergehend Zugriff auf den aktiven Tab. <code>scripting</code> erlaubt die Injektion. Für den ersten Helfer sind keine permanenten Hostfreigaben, keine <code>cookies</code>-Berechtigung und keine <code>downloads</code>-Berechtigung nötig. Das Popup prüft die CALM-Domain vor der Injektion.</p>
+      <pre><code>await chrome.scripting.executeScript({
+  target: { tabId: tab.id },
+  world: 'MAIN',
+  files: ['exporter-main.js']
+});</code></pre>
+      <p>Der Code im Seitenkontext hat keine normalen Extension-APIs. Er verwendet UI5, <code>fetch</code> und DOM-APIs. Die Extension liefert die Datei lokal mit; das Skript wird weder aus einer URL nachgeladen noch per <code>eval</code> ausgeführt. Ein Service Worker ist für diesen ersten Ablauf nicht erforderlich.</p>
       <h3>Lokales Laden in Chrome</h3>
       <ol><li><code>chrome://extensions</code> öffnen.</li><li>Developer mode einschalten.</li><li>Load unpacked wählen und den Ordner <code>extension</code> auswählen.</li><li>Cloud ALM öffnen, die gewünschte Testfallliste filtern und das SCCE-Symbol verwenden.</li></ol>
     </section>
@@ -80,18 +129,44 @@
     <section>
       <h2>Worauf SCCE zugreift</h2>
       <ul>
-        <li>die sichtbare SAP-UI5-Control-Registry, um das Tabellen-Binding zu finden,</li>
-        <li>das OData-Service unter dem relativen Cloud-ALM-Pfad für Testfälle und Tags,</li>
+        <li>die SAP-UI5-Control-Registry und das Tabellen-Binding im JavaScript-Kontext der Seite,</li>
+        <li>den OData-Service unter dem relativen Cloud-ALM-Pfad für Testfälle und Tags,</li>
         <li>die bestehende Browser-Sitzung für die Authentifizierung,</li>
-        <li>die Download-API des Browsers für die lokale XLSX-Datei.</li>
+        <li>DOM- und Blob-APIs, um den lokalen Download anzustoßen.</li>
       </ul>
       <p class="good">Kein eigener Backend-Service. Keine Übertragung der Testfalldaten an SCCE.</p>
     </section>
 
     <section>
-      <h2>Grenzen und nächste Schritte</h2>
-      <p>Der erste Stand exportiert die aktuell gefilterte Testfallliste. Die Cloud-ALM-OData-Struktur und die UI5-Control-ID können sich mit einem SAP-Release ändern. Der Exporter bricht dann sichtbar ab, statt eine unvollständige Datei zu erzeugen.</p>
-      <ul><li>Export mit Auswahl einzelner Tabellenzeilen ergänzen</li><li>weitere Cloud-ALM-Helfer als getrennte Popup-Tools hinzufügen</li><li>automatisierte Tests mit aufgezeichneten OData-Antworten ergänzen</li><li>Extension-Icon und internes Release-Paket vorbereiten</li></ul>
+      <h2>Offene Punkte vor dem ersten Extension-Release</h2>
+      <p>Das bestehende Skript ist die Referenz für die Umsetzung. Die folgenden Grenzen müssen vor einer Freigabe behandelt und im Browser geprüft werden.</p>
+      <ol>
+        <li><strong>Tag-Vollständigkeit sicherstellen.</strong> <code>fetchJson()</code> fällt derzeit bei einer fehlgeschlagenen Expand-Abfrage auf die Entity-URL ohne <code>$expand</code> zurück. Eine HTTP-200-Antwort ohne Tags zählt dabei als Erfolg. Diesen Fallback entfernen oder Tags separat vollständig nachladen und validieren. Fehler dürfen keine scheinbar vollständige Excel erzeugen.</li>
+        <li><strong>Felder und Datensätze validieren.</strong> ID, Titel und Änderungsfelder auf erwartete Struktur prüfen. Explizit leere Tags akzeptieren; fehlende Tag-Daten als Fehler behandeln. Bei <code>tags@odata.nextLink</code> weitere Seiten laden. Eindeutige UUIDs und Gesamtzahl vergleichen. Der Prototyp prüft nur die Anzahl der Listenkontexte.</li>
+        <li><strong>Die richtige Liste festlegen.</strong> Den Fallback auf die größte Tabelle entfernen oder anhand des Binding-Pfads absichern. Bei nicht finaler Binding-Länge auf eine belastbare Gesamtzahl warten. Filteränderungen während des Exports erkennen. Automatisierte Testfälle und Varianten gesondert testen, da bisher der ManualTestCaseService verwendet wird.</li>
+        <li><strong>Abbruch und Fehler behandeln.</strong> Die vorhandene Funktion <code>__calmTestcaseExportCancel()</code> setzt nur ein Flag. Für die Extension einen Abbruch-Button und <code>AbortController</code> für laufende Requests ergänzen. HTTP 401/403 als Sitzungs- oder Berechtigungsproblem melden; 429 mit begrenztem Retry und <code>Retry-After</code> behandeln. Keine endlosen Requests ohne Timeout.</li>
+        <li><strong>Bedienung prüfen.</strong> Doppelstart verhindern, Fortschritt beim geschlossenen Popup beibehalten und Fehlermeldungen zugänglich anzeigen. Falls Nachrichten zwischen Seite und Extension ergänzt werden, Herkunft und Nachrichtenformat prüfen und keine beliebigen URLs oder Skripte als Auftrag akzeptieren.</li>
+        <li><strong>Excel prüfen.</strong> IDs als Text erhalten, mehrere Tags testen und Zeitzone sichtbar erklären. Für echtes Sortieren nach Datum einen nativen Excel-Datumswert mit Zahlenformat vorsehen. Große Dateien und Excel-Zellgrenzen berücksichtigen.</li>
+      </ol>
+      <h3>Abnahme für Tool 1</h3>
+      <ul>
+        <li>Eine gefilterte Liste mit mehr Treffern als gerenderten Zeilen exportiert jede UUID genau einmal.</li>
+        <li>Die Datei enthält genau die fünf vereinbarten Spalten. Fälle mit null, einem und mehreren Tags sowie Umlaute stimmen mit CALM überein.</li>
+        <li>Beide Änderungsfelder sind mit den Quelldaten abgeglichen. Uhrzeit und Zeitzone sind nachvollziehbar.</li>
+        <li>Eine fehlgeschlagene Detailabfrage und eine Antwort ohne Tags verhindern einen unbemerkten Teil-Export.</li>
+        <li>Fortschrittsanzeige, Restzeit, Abbruch, abgelaufene Sitzung, leere Liste und erneuter Start sind im Browser geprüft.</li>
+        <li>Die heruntergeladene Datei lässt sich in Excel ohne Reparaturmeldung öffnen; Filter und Kopfzeile funktionieren.</li>
+      </ul>
+      <p><code>npm test</code> prüft aktuell nur JavaScript-Syntax. Das bestätigt weder die SAP-Schnittstelle noch den Ablauf in einer installierten Extension. Für die Weiterentwicklung sind synthetische API-Fixtures und anschließend ein Test in einem freigegebenen CALM-Tenant vorgesehen. Keine echten Kundenexporte oder Sitzungsdaten als öffentliche Fixtures ablegen.</p>
+    </section>
+    <section>
+      <h2>Quellen und Einstieg in den Code</h2>
+      <ul>
+        <li><a href="https://github.com/SKYWAY-GmbH/SCCE/blob/main/extension/exporter-main.js">exporter-main.js</a>: Binding, Paging, OData, Fortschritt und XLSX.</li>
+        <li><a href="https://github.com/SKYWAY-GmbH/SCCE/blob/main/extension/popup.js">popup.js</a> und <a href="https://github.com/SKYWAY-GmbH/SCCE/blob/main/extension/manifest.json">manifest.json</a>: Prototyp für die Injektion nach einem Klick.</li>
+        <li><a href="https://developer.chrome.com/docs/extensions/reference/api/scripting">Chrome-Dokumentation zu scripting</a>: Berechtigungen, ExecutionWorld und Rückgabe von Promise-Ergebnissen.</li>
+        <li><a href="https://developer.chrome.com/docs/extensions/develop/concepts/activeTab">Chrome-Dokumentation zu activeTab</a>: vorübergehender Zugriff nach einer Benutzeraktion.</li>
+      </ul>
     </section>
   </main>
 </body>

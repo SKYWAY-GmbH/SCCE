@@ -5,52 +5,20 @@
 
 **SCCE – Skyway CALM Chrome Extension**
 
-SCCE is a Chrome extension with small helpers for SAP Cloud ALM. The first helper exports all test cases from the active Test Preparation list to an Excel workbook.
+Eine Browser-Erweiterung mit kleinen Helfern für SAP Cloud ALM. Das erste Tool ist der Excel-Download der aktuell gefilterten Testfallliste, inklusive ID, Titel, Tags, letzter Bearbeiter und Änderungszeitpunkt. Der Export berücksichtigt Lazy Loading und zeigt Fortschritt sowie geschätzte Restzeit an.
 
-## First helper: test case export
+## Entwicklungsgrundlage
 
-The exporter reads the currently filtered SAP Cloud ALM test case list, handles UI5 lazy loading, fetches the detail records from the same Cloud ALM session, and downloads an `.xlsx` file with:
+- [Technische HTML-Dokumentation öffnen](https://schaffa.dev/p/1qra6jyxsa12rju5): Funktionsweise, Datenzugriffe, Feldmapping und Umsetzung als Extension.
+- [HTML-Quelldatei](docs/how-it-works.html)
+- [Exporter](extension/exporter-main.js): auch vollständig in der Chrome-Konsole ausführbar.
 
-- Testcase ID
-- Testcase Title
-- Testcase Tag
-- Last Changed By
-- Last Change Time/Date
+`extension/` enthält ein Manifest-V3-Grundgerüst mit Export-Button. Es ist ein Entwicklungsstand; der vollständige Extension-Ablauf wurde noch nicht in Chrome getestet. Bekannte Grenzen des Exporters und die Abnahmekriterien stehen in der Dokumentation.
 
-The exporter shows progress and an estimated remaining time. It stops without downloading a file when detail requests fail, so an incomplete export is not mistaken for a complete one.
+## Lokal ausprobieren
 
-## Load the extension locally
+In `chrome://extensions` den Entwicklermodus aktivieren und über **Entpackte Erweiterung laden** den Ordner `extension/` auswählen. Danach die Testfallliste in SAP Cloud ALM öffnen, Filter setzen und im SCCE-Popup **Excel exportieren** wählen.
 
-1. Open `chrome://extensions` in Chrome.
-2. Enable **Developer mode**.
-3. Choose **Load unpacked**.
-4. Select the `extension` directory from this repository.
-5. Open SAP Cloud ALM Test Preparation, apply the desired project or list filters, and click the SCCE toolbar icon.
-6. Choose **Export test cases to Excel**.
+Die Datenabfragen nutzen die bestehende CALM-Sitzung. Die Excel-Datei entsteht lokal im Browser. SCCE benötigt dafür keinen eigenen Server.
 
-The extension runs the exporter in the active SAP Cloud ALM page. This lets it use the existing authenticated browser session without asking for or storing credentials.
-
-## Project layout
-
-```text
-extension/
-  manifest.json       Chrome Manifest V3 definition
-  popup.html          Extension popup
-  popup.css           Popup styles
-  popup.js            Starts the page-context exporter
-  exporter-main.js    SAP Cloud ALM exporter
-docs/
-  how-it-works.html   Technical explanation and development starting point
-```
-
-## Development checks
-
-```sh
-npm test
-```
-
-The check only validates the JavaScript syntax. The exporter itself must be tested in an authenticated SAP Cloud ALM tenant because its OData responses depend on the tenant and current UI5 application.
-
-## Scope and privacy
-
-SCCE is designed for the SAP Cloud ALM page that is already open in the user's browser. It sends no test case data to a third-party service. The Excel file is created in the browser and downloaded locally.
+`npm test` prüft die JavaScript-Syntax.
