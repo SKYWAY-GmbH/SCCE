@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SCCE</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">SKYWAY</p>
+        <h1>SCCE</h1>
+        <p class="subtitle">Skyway CALM Chrome Extension</p>
+      </header>
+      <section class="tool-card">
+        <div>
+          <p class="tool-label">Erstes Tool</p>
+          <h2>Testfälle exportieren</h2>
+          <p class="description">Die aktuell gefilterte Testfallliste aus SAP Cloud ALM als Excel-Datei herunterladen.</p>
+        </div>
+        <button id="exportButton" type="button">Excel exportieren</button>
+      </section>
+      <p id="status" class="status" role="status">Bereit.</p>
+      <p class="hint">Öffne zuerst die Testfallliste in SAP Cloud ALM.</p>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

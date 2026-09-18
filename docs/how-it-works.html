@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SCCE: Wie der SAP-Cloud-ALM-Export funktioniert</title>
+  <style>
+    :root { color-scheme: light; --ink:#182338; --muted:#5f6d84; --line:#d9e1ec; --blue:#1677ff; --soft:#f5f8fc; --green:#087443; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--soft); color:var(--ink); font:16px/1.6 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    main { width:min(1040px,calc(100% - 32px)); margin:0 auto; padding:44px 0 72px; }
+    header, section { background:#fff; border:1px solid var(--line); border-radius:18px; padding:28px 32px; box-shadow:0 12px 32px rgb(26 55 95 / 6%); }
+    section { margin-top:18px; }
+    .eyebrow { color:var(--blue); font-size:12px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; }
+    h1 { margin:6px 0 8px; max-width:760px; font-size:clamp(28px,5vw,48px); line-height:1.05; letter-spacing:-.045em; }
+    h2 { margin:0 0 12px; font-size:25px; letter-spacing:-.025em; }
+    h3 { margin:22px 0 6px; font-size:18px; }
+    p { margin:8px 0 14px; }
+    .lede { max-width:760px; color:var(--muted); font-size:18px; }
+    .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+    .card { padding:18px; border:1px solid var(--line); border-radius:13px; background:#fbfcfe; }
+    .card h3 { margin-top:0; }
+    ol, ul { padding-left:24px; }
+    li { margin:8px 0; }
+    code { padding:2px 5px; border-radius:5px; background:#eef3f9; color:#15345e; font-size:.92em; }
+    pre { overflow:auto; padding:16px; border-radius:11px; background:#172033; color:#e9f0fb; font-size:13px; }
+    .note { border-left:4px solid var(--blue); padding:10px 14px; background:#eef5ff; }
+    .good { color:var(--green); font-weight:700; }
+    svg { display:block; width:100%; height:auto; margin:12px 0 4px; }
+    .caption { color:var(--muted); font-size:13px; }
+    @media (max-width:720px) { main { width:min(100% - 20px,1040px); padding:16px 0 36px; } header,section { padding:21px; border-radius:14px; } .grid { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="eyebrow">SCCE · Skyway CALM Chrome Extension</div>
+      <h1>Wie der SAP-Cloud-ALM-Export funktioniert</h1>
+      <p class="lede">Diese Seite beschreibt den ersten Helfer der Extension, den Excel-Export für Testfälle, und zeigt den Weg vom DevTools-Prototyp zu einer Chrome-Erweiterung.</p>
+    </header>
+
+    <section>
+      <h2>Der Ablauf</h2>
+      <svg viewBox="0 0 960 188" role="img" aria-label="Ablauf vom Chrome Popup über die Cloud-ALM-Tabelle und den OData-Service bis zur Excel-Datei">
+        <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#1677ff"/></marker></defs>
+        <g font-family="system-ui, sans-serif" font-size="16" text-anchor="middle">
+          <rect x="20" y="58" width="190" height="72" rx="12" fill="#eef5ff" stroke="#a9caff"/><text x="115" y="88" fill="#182338">SCCE Popup</text><text x="115" y="111" fill="#5f6d84" font-size="13">Export starten</text>
+          <rect x="270" y="58" width="190" height="72" rx="12" fill="#fff" stroke="#d9e1ec"/><text x="365" y="88" fill="#182338">Cloud-ALM-Seite</text><text x="365" y="111" fill="#5f6d84" font-size="13">UI5-Binding lesen</text>
+          <rect x="520" y="58" width="190" height="72" rx="12" fill="#fff" stroke="#d9e1ec"/><text x="615" y="88" fill="#182338">OData-Service</text><text x="615" y="111" fill="#5f6d84" font-size="13">Details + Tags</text>
+          <rect x="770" y="58" width="170" height="72" rx="12" fill="#edfbf3" stroke="#a7e0bd"/><text x="855" y="88" fill="#182338">Excel-Datei</text><text x="855" y="111" fill="#087443" font-size="13">lokaler Download</text>
+          <path d="M210 94 H270" stroke="#1677ff" stroke-width="3" marker-end="url(#arrow)"/><path d="M460 94 H520" stroke="#1677ff" stroke-width="3" marker-end="url(#arrow)"/><path d="M710 94 H770" stroke="#1677ff" stroke-width="3" marker-end="url(#arrow)"/>
+        </g>
+      </svg>
+      <p class="caption">Die Daten bleiben im Browser. SCCE nutzt die bereits angemeldete Cloud-ALM-Seite und sendet nichts an einen eigenen Server.</p>
+    </section>
+
+    <section>
+      <h2>Was das ursprüngliche Konsolenskript macht</h2>
+      <ol>
+        <li>Es sucht in der UI5-Control-Registry nach der Testfalltabelle, bevorzugt nach der Tabelle mit der ID <code>tableTCO</code>.</li>
+        <li>Es liest die Gesamtzahl über das Binding und fordert die Kontexte blockweise mit <code>requestContexts</code> an. Dadurch werden auch lazy geladene Zeilen erfasst.</li>
+        <li>Für jede Testcase-ID fragt es den Detaildatensatz über den relativen OData-Pfad <code>/ui/tmService-ui/v1/odata/v4/ManualTestCaseService/TestCases(&lt;ID&gt;)?$expand=tags</code> ab.</li>
+        <li>Es übernimmt ID, Titel, Tags, Bearbeiter und Änderungszeitpunkt, zeigt den Fortschritt mit ETA an und erzeugt die XLSX-Datei im Browser.</li>
+      </ol>
+      <div class="note"><strong>Wichtig:</strong> Die Anfrage verwendet <code>credentials: "same-origin"</code>. Dadurch werden die Cookies der bereits geöffneten Cloud-ALM-Sitzung verwendet. SCCE braucht kein Passwort und speichert kein Token.</div>
+    </section>
+
+    <section>
+      <h2>Wie daraus die Extension wird</h2>
+      <div class="grid">
+        <div class="card"><h3>1. Popup</h3><p><code>popup.html</code> zeigt den ersten Helfer. Ein Klick fragt den aktiven Tab ab und prüft, ob er zu <code>*.alm.cloud.sap</code> gehört.</p></div>
+        <div class="card"><h3>2. Seitenkontext</h3><p><code>popup.js</code> startet <code>exporter-main.js</code> über <code>chrome.scripting.executeScript</code> in der Hauptwelt der Seite. So sind UI5 und der Session-Kontext erreichbar.</p></div>
+        <div class="card"><h3>3. Fortschritt</h3><p>Der Exporter erstellt eine kleine Fortschrittsbox direkt in Cloud ALM. Sie zeigt geladene Testfälle, Detailfortschritt und die geschätzte Restzeit.</p></div>
+        <div class="card"><h3>4. Schutz vor Teil-Exports</h3><p>Wenn Detailabfragen scheitern, beendet SCCE den Lauf mit einem Fehler und lädt keine Excel-Datei herunter.</p></div>
+      </div>
+      <h3>Lokales Laden in Chrome</h3>
+      <ol><li><code>chrome://extensions</code> öffnen.</li><li>Developer mode einschalten.</li><li>Load unpacked wählen und den Ordner <code>extension</code> auswählen.</li><li>Cloud ALM öffnen, die gewünschte Testfallliste filtern und das SCCE-Symbol verwenden.</li></ol>
+    </section>
+
+    <section>
+      <h2>Worauf SCCE zugreift</h2>
+      <ul>
+        <li>die sichtbare SAP-UI5-Control-Registry, um das Tabellen-Binding zu finden,</li>
+        <li>das OData-Service unter dem relativen Cloud-ALM-Pfad für Testfälle und Tags,</li>
+        <li>die bestehende Browser-Sitzung für die Authentifizierung,</li>
+        <li>die Download-API des Browsers für die lokale XLSX-Datei.</li>
+      </ul>
+      <p class="good">Kein eigener Backend-Service. Keine Übertragung der Testfalldaten an SCCE.</p>
+    </section>
+
+    <section>
+      <h2>Grenzen und nächste Schritte</h2>
+      <p>Der erste Stand exportiert die aktuell gefilterte Testfallliste. Die Cloud-ALM-OData-Struktur und die UI5-Control-ID können sich mit einem SAP-Release ändern. Der Exporter bricht dann sichtbar ab, statt eine unvollständige Datei zu erzeugen.</p>
+      <ul><li>Export mit Auswahl einzelner Tabellenzeilen ergänzen</li><li>weitere Cloud-ALM-Helfer als getrennte Popup-Tools hinzufügen</li><li>automatisierte Tests mit aufgezeichneten OData-Antworten ergänzen</li><li>Extension-Icon und internes Release-Paket vorbereiten</li></ul>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "name": "scce",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SCCE – Skyway CALM Chrome Extension",
+  "scripts": {
+    "test": "node --check extension/popup.js && node --check extension/exporter-main.js"
+  }
+}
