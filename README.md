@@ -5,7 +5,7 @@
 
 **SCCE – Skyway CALM Chrome Extension**
 
-Eine Browser-Erweiterung mit kleinen Helfern für SAP Cloud ALM. Das erste Tool ist der Excel-Download der aktuell gefilterten Testfallliste, inklusive ID, Titel, Tags, letzter Bearbeiter und Änderungszeitpunkt. Der Export berücksichtigt Lazy Loading und zeigt Fortschritt sowie geschätzte Restzeit an.
+Eine Browser-Erweiterung mit kleinen Helfern für SAP Cloud ALM. Das erste Tool ist der Excel-Download der aktuell gefilterten Testfallliste, inklusive ID, Titel, Tags, letzter Bearbeiter, Änderungszeitpunkt und Priorität. Prioritäten werden auf einheitliche, filterbare Werte normalisiert. Der Export berücksichtigt Lazy Loading und zeigt Fortschritt sowie geschätzte Restzeit an.
 
 ## Entwicklungsgrundlage
 

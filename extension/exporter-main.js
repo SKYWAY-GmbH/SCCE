@@ -164,6 +164,38 @@
   function firstValue(...values) {
     return values.find((item) => item !== undefined && item !== null && item !== '') ?? '';
   }
+  const PRIORITY_LABELS = new Map([
+    [10, '10 - Very High'],
+    [20, '20 - High'],
+    [30, '30 - Medium'],
+    [40, '40 - Low'],
+    [50, '50 - Very Low'],
+  ]);
+  const PRIORITY_TEXT = new Map([
+    ['very high', '10 - Very High'], ['sehr hoch', '10 - Very High'],
+    ['high', '20 - High'], ['hoch', '20 - High'],
+    ['medium', '30 - Medium'], ['mittel', '30 - Medium'],
+    ['low', '40 - Low'], ['niedrig', '40 - Low'],
+    ['very low', '50 - Very Low'], ['sehr niedrig', '50 - Very Low'],
+  ]);
+  function normalizePriority(raw) {
+    let candidate = raw;
+    if (candidate && typeof candidate === 'object') {
+      candidate = firstValue(candidate.id, candidate.ID, candidate.code, candidate.value, candidate.priorityId, candidate.priority, candidate.label, candidate.name, candidate.text);
+    }
+    const text = String(candidate ?? '').trim();
+    if (!text) return '00 - Unknown';
+    const numeric = Number(text.match(/\b(?:10|20|30|40|50)\b/)?.[0]);
+    if (PRIORITY_LABELS.has(numeric)) return PRIORITY_LABELS.get(numeric);
+    return PRIORITY_TEXT.get(text.toLowerCase()) || '00 - Unknown';
+  }
+  function firstPriority(...values) {
+    for (const candidate of values) {
+      const normalized = normalizePriority(candidate);
+      if (normalized !== '00 - Unknown') return normalized;
+    }
+    return '00 - Unknown';
+  }
   function outputRows(listRows, details) {
     return listRows.map((row, index) => {
       const detail = details[index] || {};
@@ -173,6 +205,12 @@
         'Testcase Tag': firstValue(tags(detail), tags(row)),
         'Last Changed By': firstValue(detail.modifiedBy, row.modifiedBy, detail.lastChangedBy, row.lastChangedBy, detail.changedBy, row.changedBy),
         'Last Change Time/Date': localDate(firstValue(detail.modifiedAt, row.modifiedAt, detail.lastChangedAt, row.lastChangedAt, detail.lastChangeTime, row.lastChangeTime, detail.lastChangeDateTime, row.lastChangeDateTime)),
+        'Priority': firstPriority(
+          detail.priority, row.priority,
+          detail.priorityCode, row.priorityCode,
+          detail.priorityId, row.priorityId,
+          detail.manualtestcase?.priority, row.manualtestcase?.priority,
+        ),
       };
     });
   }
@@ -188,11 +226,12 @@
     return result;
   }
   function sheetXml(rows) {
-    const headers = ['Testcase ID', 'Testcase Title', 'Testcase Tag', 'Last Changed By', 'Last Change Time/Date'];
+    const headers = ['Testcase ID', 'Testcase Title', 'Testcase Tag', 'Last Changed By', 'Last Change Time/Date', 'Priority'];
+    const lastCell = `${column(headers.length - 1)}${rows.length + 1}`;
     const cell = (content, style, ref) => `<c r="${ref}" s="${style}" t="inlineStr"><is><t xml:space="preserve">${xml(content)}</t></is></c>`;
     const header = `<row r="1">${headers.map((x, i) => cell(x, 1, `${column(i)}1`)).join('')}</row>`;
     const body = rows.map((row, ri) => `<row r="${ri + 2}">${headers.map((key, ci) => cell(row[key], 0, `${column(ci)}${ri + 2}`)).join('')}</row>`).join('');
-    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:E${rows.length + 1}"/><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols><col min="1" max="1" width="18" customWidth="1"/><col min="2" max="2" width="45" customWidth="1"/><col min="3" max="3" width="30" customWidth="1"/><col min="4" max="4" width="24" customWidth="1"/><col min="5" max="5" width="25" customWidth="1"/></cols><sheetData>${header}${body}</sheetData><autoFilter ref="A1:E${rows.length + 1}"/></worksheet>`;
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:${lastCell}"/><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols><col min="1" max="1" width="18" customWidth="1"/><col min="2" max="2" width="45" customWidth="1"/><col min="3" max="3" width="30" customWidth="1"/><col min="4" max="4" width="24" customWidth="1"/><col min="5" max="5" width="25" customWidth="1"/><col min="6" max="6" width="22" customWidth="1"/></cols><sheetData>${header}${body}</sheetData><autoFilter ref="A1:${lastCell}"/></worksheet>`;
   }
   function u16(n) { return new Uint8Array([n & 255, (n >>> 8) & 255]); }
   function u32(n) { return new Uint8Array([n & 255, (n >>> 8) & 255, (n >>> 16) & 255, (n >>> 24) & 255]); }

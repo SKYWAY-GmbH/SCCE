@@ -43,8 +43,8 @@
     <header>
       <div class="eyebrow">SCCE · Skyway CALM Chrome Extension</div>
       <h1>Wie der SAP-Cloud-ALM-Export funktioniert</h1>
-      <p class="lede">Entwicklungsgrundlage für den ersten Helfer: Testfälle mit Tags und Änderungsdaten als Excel herunterladen.</p>
-      <p>Stand: 18. September 2026. <a href="https://github.com/SKYWAY-GmbH/SCCE">Öffentliches Repository SKYWAY-GmbH/SCCE</a>.</p>
+      <p class="lede">Entwicklungsgrundlage für den ersten Helfer: Testfälle mit Tags, Änderungsdaten und einheitlicher Priorität als Excel herunterladen.</p>
+      <p>Stand: 20. September 2026. <a href="https://github.com/SKYWAY-GmbH/SCCE">Öffentliches Repository SKYWAY-GmbH/SCCE</a>.</p>
       <p>Das Konsolenskript wurde in einer angemeldeten Test-Preparation-Seite verwendet und eine erzeugte Excel-Datei inhaltlich geprüft. Das Repository enthält zusätzlich ein noch nicht im Browser getestetes Manifest-V3-Grundgerüst. Die folgenden Abschnitte unterscheiden vorhandenes Verhalten und noch umzusetzende Anforderungen.</p>
     </header>
 
@@ -88,12 +88,13 @@
           <tr><td>Testcase Tag</td><td><code>tags[].tagLabel</code></td><td>Mehrere Bezeichnungen werden dedupliziert und mit Kommas verbunden.</td></tr>
           <tr><td>Last Changed By</td><td><code>modifiedBy</code></td><td>Der vom Service gelieferte Wert. Der Prototyp fragt keinen zusätzlichen Benutzerdienst zur Namensauflösung ab.</td></tr>
           <tr><td>Last Change Time/Date</td><td><code>modifiedAt</code></td><td><code>new Date(...).toLocaleString('de-DE')</code>. Zeitzone des Browsers; derzeit Text in Excel, kein nativer Excel-Datumswert.</td></tr>
+          <tr><td>Priority</td><td><code>priority</code></td><td>Wird auf feste Werte wie <code>10 - Very High</code>, <code>20 - High</code>, <code>30 - Medium</code>, <code>40 - Low</code> oder <code>00 - Unknown</code> normalisiert. Dadurch bleibt der Excel-Filter einheitlich.</td></tr>
         </tbody>
       </table></div>
       <p>Die Funktion <code>tags()</code> enthält Fallbacks für alternative OData-Formen wie <code>value</code>, <code>items</code> und <code>tagName</code>. Diese sind Kompatibilitätsversuche und nicht für jede CALM-Version bestätigt.</p>
       <div class="note">Ein explizites <code>tags: []</code> bedeutet „keine Tags“. Eine Antwort ohne die Eigenschaft <code>tags</code> belegt das nicht. Der aktuelle SCCE-Stand unterscheidet diese Fälle und bricht bei fehlendem Feld nach Wiederholungen ohne Download ab.</div>
       <h3>Die XLSX-Erstellung</h3>
-      <p><code>sheetXml()</code> erzeugt die fünf Spalten, eine fixierte Kopfzeile und einen Autofilter. Alle Zellen sind <code>inlineStr</code>; Inhalte werden als Text geschrieben und für XML maskiert. <code>buildXlsx()</code> packt Worksheet, Workbook, Styles und Beziehungen mit einem kleinen ZIP-Schreiber samt CRC32 in eine echte XLSX-Datei. Es wird keine Excel-Bibliothek von einem CDN geladen.</p>
+      <p><code>sheetXml()</code> erzeugt die sechs Spalten, eine fixierte Kopfzeile und einen Autofilter über den gesamten Bereich <code>A:F</code>. Alle Zellen sind <code>inlineStr</code>; Inhalte werden als Text geschrieben und für XML maskiert. <code>buildXlsx()</code> packt Worksheet, Workbook, Styles und Beziehungen mit einem kleinen ZIP-Schreiber samt CRC32 in eine echte XLSX-Datei. Es wird keine Excel-Bibliothek von einem CDN geladen.</p>
       <p><code>download()</code> erzeugt einen <code>Blob</code>, eine temporäre <code>blob:</code>-URL und ein <code>&lt;a download&gt;</code>-Element. Der synthetische Klick stößt den Browserdownload an. Eine Erfolgsmeldung im Prototyp bestätigt diesen Aufruf, nicht das tatsächliche Speichern auf der Festplatte.</p>
       <h3>Fortschritt und Restzeit</h3>
       <p>Die Box auf der CALM-Seite hat zwei Phasen: Liste laden und Details lesen. Sie zeigt <code>erledigt / gesamt</code> und einen Balken. Die Restzeit berechnet sich aus <code>(gesamt − erledigt) / (erledigt / vergangene Sekunden)</code>. Da der Prototyp die Zeit seit Exportbeginn verwendet, ist die Schätzung beim Phasenwechsel ungenau. Für die Extension sollte die Detailphase ihre eigene Startzeit erhalten.</p>
@@ -151,7 +152,7 @@
       <h3>Abnahme für Tool 1</h3>
       <ul>
         <li>Eine gefilterte Liste mit mehr Treffern als gerenderten Zeilen exportiert jede UUID genau einmal.</li>
-        <li>Die Datei enthält genau die fünf vereinbarten Spalten. Fälle mit null, einem und mehreren Tags sowie Umlaute stimmen mit CALM überein.</li>
+        <li>Die Datei enthält genau die sechs vereinbarten Spalten. Fälle mit null, einem und mehreren Tags, allen bekannten Prioritäten sowie Umlauten stimmen mit CALM überein.</li>
         <li>Beide Änderungsfelder sind mit den Quelldaten abgeglichen. Uhrzeit und Zeitzone sind nachvollziehbar.</li>
         <li>Eine fehlgeschlagene Detailabfrage und eine Antwort ohne Tags verhindern einen unbemerkten Teil-Export.</li>
         <li>Fortschrittsanzeige, Restzeit, Abbruch, abgelaufene Sitzung, leere Liste und erneuter Start sind im Browser geprüft.</li>
