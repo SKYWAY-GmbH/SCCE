@@ -13,12 +13,12 @@ Eine Browser-Erweiterung mit kleinen Helfern für SAP Cloud ALM. Das erste Tool 
 - [HTML-Quelldatei](docs/how-it-works.html)
 - [Exporter](extension/exporter-main.js): auch vollständig in der Chrome-Konsole ausführbar.
 
-`extension/` enthält ein Manifest-V3-Grundgerüst mit Export-Button. Es ist ein Entwicklungsstand; der vollständige Extension-Ablauf wurde noch nicht in Chrome getestet. Bekannte Grenzen des Exporters und die Abnahmekriterien stehen in der Dokumentation.
+`extension/` enthält die Quellversion der Manifest-V3-Extension. Der Export läuft im geöffneten CALM-Tab, zeigt dort den Fortschritt und kann über **Export abbrechen** beendet werden. Das Popup ist als Werkzeug-Shell angelegt, damit weitere CALM-Helfer ergänzt werden können. Bekannte Grenzen des Exporters und die Abnahmekriterien stehen in der Dokumentation.
 
 ## Lokal ausprobieren
 
-In `chrome://extensions` den Entwicklermodus aktivieren und über **Entpackte Erweiterung laden** den Ordner `extension/` auswählen. Danach die Testfallliste in SAP Cloud ALM öffnen, Filter setzen und im SCCE-Popup **Excel exportieren** wählen.
+Mit `pnpm build` wird das installierbare Artefakt nach `dist/` kopiert. In `chrome://extensions` den Entwicklermodus aktivieren und über **Entpackte Erweiterung laden** den Ordner `dist/` auswählen. Danach die Testfallliste in SAP Cloud ALM öffnen, Filter setzen und im SCCE-Popup **Excel exportieren** wählen.
 
 Die Datenabfragen nutzen die bestehende CALM-Sitzung. Die Excel-Datei entsteht lokal im Browser. SCCE benötigt dafür keinen eigenen Server.
 
-`npm test` prüft die JavaScript-Syntax.
+`pnpm test` prüft die JavaScript-Syntax und das Manifest. `pnpm build` erzeugt den Ordner `dist/`; dieser Ordner ist das Verzeichnis für die lokale Chrome-Installation.

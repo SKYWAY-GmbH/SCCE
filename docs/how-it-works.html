@@ -124,7 +124,7 @@
 });</code></pre>
       <p>Der Code im Seitenkontext hat keine normalen Extension-APIs. Er verwendet UI5, <code>fetch</code> und DOM-APIs. Die Extension liefert die Datei lokal mit; das Skript wird weder aus einer URL nachgeladen noch per <code>eval</code> ausgeführt. Ein Service Worker ist für diesen ersten Ablauf nicht erforderlich.</p>
       <h3>Lokales Laden in Chrome</h3>
-      <ol><li><code>chrome://extensions</code> öffnen.</li><li>Developer mode einschalten.</li><li>Load unpacked wählen und den Ordner <code>extension</code> auswählen.</li><li>Cloud ALM öffnen, die gewünschte Testfallliste filtern und das SCCE-Symbol verwenden.</li></ol>
+      <ol><li><code>pnpm build</code> ausführen.</li><li><code>chrome://extensions</code> öffnen.</li><li>Developer mode einschalten.</li><li>Load unpacked wählen und den erzeugten Ordner <code>dist</code> auswählen.</li><li>Cloud ALM öffnen, die gewünschte Testfallliste filtern und das SCCE-Symbol verwenden.</li></ol>
     </section>
 
     <section>
@@ -145,7 +145,7 @@
         <li><strong>Tag-Vollständigkeit testen.</strong> <code>fetchJson()</code> verwendet jetzt nur die unfiltrierte Expand-Abfrage und verlangt ein vorhandenes <code>tags</code>-Feld. Ein explizites leeres Array ist gültig. HTTP-200 ohne Feld, HTTP-Fehler oder unvollständige Detaildaten verhindern den Download. Antworten mit <code>tags@odata.nextLink</code> müssen für eine CALM-Version mit paginierten Tags noch separat getestet werden.</li>
         <li><strong>Felder und Datensätze validieren.</strong> ID, Titel und Änderungsfelder auf erwartete Struktur prüfen. Explizit leere Tags akzeptieren; fehlende Tag-Daten als Fehler behandeln. Bei <code>tags@odata.nextLink</code> weitere Seiten laden. Eindeutige UUIDs und Gesamtzahl vergleichen. Der Prototyp prüft nur die Anzahl der Listenkontexte.</li>
         <li><strong>Die richtige Liste festlegen.</strong> Den Fallback auf die größte Tabelle entfernen oder anhand des Binding-Pfads absichern. Bei nicht finaler Binding-Länge auf eine belastbare Gesamtzahl warten. Filteränderungen während des Exports erkennen. Automatisierte Testfälle und Varianten gesondert testen, da bisher der ManualTestCaseService verwendet wird.</li>
-        <li><strong>Abbruch und Fehler behandeln.</strong> Die vorhandene Funktion <code>__calmTestcaseExportCancel()</code> setzt nur ein Flag. Für die Extension einen Abbruch-Button und <code>AbortController</code> für laufende Requests ergänzen. HTTP 401/403 als Sitzungs- oder Berechtigungsproblem melden; 429 mit begrenztem Retry und <code>Retry-After</code> behandeln. Keine endlosen Requests ohne Timeout.</li>
+        <li><strong>Abbruch und Fehler testen.</strong> Der Exporter hat einen Abbruch-Button, beendet eigene Detailanfragen über <code>AbortController</code> und behandelt HTTP 401/403 als Sitzungs- oder Berechtigungsproblem. Beim Listenabruf endet das Warten sofort; die bereits laufende UI5-Anfrage der CALM-Tabelle kann im Hintergrund abschließen, da <code>requestContexts()</code> keinen eigenen Abbruchparameter anbietet. Es werden danach keine weiteren Seiten oder Details für diesen Export angefordert. HTTP 429 wird begrenzt mit <code>Retry-After</code> wiederholt. Diese Fälle müssen noch im Browser geprüft werden; zusätzliche Request-Timeouts bleiben offen.</li>
         <li><strong>Bedienung prüfen.</strong> Doppelstart verhindern, Fortschritt beim geschlossenen Popup beibehalten und Fehlermeldungen zugänglich anzeigen. Falls Nachrichten zwischen Seite und Extension ergänzt werden, Herkunft und Nachrichtenformat prüfen und keine beliebigen URLs oder Skripte als Auftrag akzeptieren.</li>
         <li><strong>Excel prüfen.</strong> IDs als Text erhalten, mehrere Tags testen und Zeitzone sichtbar erklären. Für echtes Sortieren nach Datum einen nativen Excel-Datumswert mit Zahlenformat vorsehen. Große Dateien und Excel-Zellgrenzen berücksichtigen.</li>
       </ol>
@@ -158,7 +158,7 @@
         <li>Fortschrittsanzeige, Restzeit, Abbruch, abgelaufene Sitzung, leere Liste und erneuter Start sind im Browser geprüft.</li>
         <li>Die heruntergeladene Datei lässt sich in Excel ohne Reparaturmeldung öffnen; Filter und Kopfzeile funktionieren.</li>
       </ul>
-      <p><code>npm test</code> prüft aktuell nur JavaScript-Syntax. Das bestätigt weder die SAP-Schnittstelle noch den Ablauf in einer installierten Extension. Für die Weiterentwicklung sind synthetische API-Fixtures und anschließend ein Test in einem freigegebenen CALM-Tenant vorgesehen. Keine echten Kundenexporte oder Sitzungsdaten als öffentliche Fixtures ablegen.</p>
+      <p><code>pnpm test</code> prüft JavaScript-Syntax und das Manifest. <code>pnpm build</code> validiert den Manifest-V3-Build und erzeugt das installierbare <code>dist</code>-Artefakt. Das bestätigt weder die SAP-Schnittstelle noch den Ablauf in einer installierten Extension. Für die Weiterentwicklung sind synthetische API-Fixtures und anschließend ein Test in einem freigegebenen CALM-Tenant vorgesehen. Keine echten Kundenexporte oder Sitzungsdaten als öffentliche Fixtures ablegen.</p>
     </section>
     <section>
       <h2>Quellen und Einstieg in den Code</h2>

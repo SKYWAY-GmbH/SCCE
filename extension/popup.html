@@ -3,26 +3,68 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>SCCE</title>
+    <title>SCCE · Testfälle exportieren</title>
     <link rel="stylesheet" href="popup.css">
   </head>
   <body>
-    <main>
-      <header>
-        <p class="eyebrow">SKYWAY</p>
-        <h1>SCCE</h1>
-        <p class="subtitle">Skyway CALM Chrome Extension</p>
-      </header>
-      <section class="tool-card">
-        <div>
-          <p class="tool-label">Erstes Tool</p>
-          <h2>Testfälle exportieren</h2>
-          <p class="description">Die aktuell gefilterte Testfallliste aus SAP Cloud ALM als Excel-Datei herunterladen.</p>
+    <main class="shell">
+      <header class="hero">
+        <div class="brandline">
+          <span class="brand-mark" aria-hidden="true">S</span>
+          <span class="brand-name">SKYWAY / CALM</span>
+          <span id="connectionBadge" class="badge badge-waiting">Wird geprüft</span>
         </div>
-        <button id="exportButton" type="button">Excel exportieren</button>
+        <h1>Testfälle<br><span>exportieren.</span></h1>
+        <p class="hero-copy">Die aktuelle Liste aus SAP Cloud ALM als saubere Excel-Datei sichern.</p>
+      </header>
+
+      <section class="context-panel" aria-labelledby="contextTitle">
+        <div class="panel-heading">
+          <p id="contextTitle" class="panel-kicker">Arbeitsbereich</p>
+          <span class="context-pulse" aria-hidden="true"></span>
+        </div>
+        <p id="tabContext" class="context-text">Aktiver Tab wird geprüft …</p>
+        <p class="context-help">Alle Treffer der aktuellen Filter werden exportiert.</p>
       </section>
-      <p id="status" class="status" role="status">Bereit.</p>
-      <p class="hint">Öffne zuerst die Testfallliste in SAP Cloud ALM.</p>
+
+      <section class="tool-card" aria-labelledby="exportTitle">
+        <div class="tool-heading">
+          <div>
+            <p class="panel-kicker">Werkzeug 01</p>
+            <h2 id="exportTitle">Testfallliste</h2>
+          </div>
+          <span class="file-badge">.XLSX</span>
+        </div>
+        <p class="tool-description">ID, Titel, Tags, letzter Bearbeiter, Änderungszeitpunkt und Priorität in einer Datei.</p>
+        <button id="exportButton" type="button">
+          <span>Excel exportieren</span>
+          <span class="button-arrow" aria-hidden="true">↗</span>
+        </button>
+        <div class="tool-meta" role="group" aria-label="Exportdetails">
+          <span>Lokaler Download</span>
+          <span class="meta-dot" aria-hidden="true"></span>
+          <span>CALM-Sitzung bleibt aktiv</span>
+        </div>
+      </section>
+
+      <section class="next-tools" aria-labelledby="nextToolsTitle">
+        <div class="next-tools-heading">
+          <p id="nextToolsTitle" class="panel-kicker">Weitere Werkzeuge</p>
+          <span class="coming-soon">Demnächst</span>
+        </div>
+        <div class="placeholder-tool" aria-disabled="true">
+          <span class="placeholder-icon" aria-hidden="true">+</span>
+          <div>
+            <strong>Weitere CALM-Helfer</strong>
+            <span>Dieser Bereich ist für die nächsten Werkzeuge vorbereitet.</span>
+          </div>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <p id="status" class="status" role="status" aria-live="polite">Bereit für den Export.</p>
+        <p class="hint">Öffne zuerst die Testfallliste in SAP Cloud ALM.</p>
+      </footer>
     </main>
     <script src="popup.js"></script>
   </body>
