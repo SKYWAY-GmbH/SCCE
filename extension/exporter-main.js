@@ -48,7 +48,7 @@
     ].join(';');
     box.innerHTML = '<div id="calm-export-title" style="font-weight:700;margin-bottom:8px">SAP Cloud ALM Export</div>'
       + '<div id="calm-export-phase">Wird vorbereitet …</div>'
-      + '<div role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="height:10px;background:#4b5563;border-radius:5px;margin:10px 0 7px;overflow:hidden">'
+      + '<div role="progressbar" aria-label="SAP Cloud ALM Export" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="height:10px;background:#4b5563;border-radius:5px;margin:10px 0 7px;overflow:hidden">'
       + '<div id="calm-export-bar" style="height:100%;width:0;background:#60a5fa;transition:width .2s"></div></div>'
       + '<div id="calm-export-eta" style="color:#d1d5db;font-size:12px">Noch wird die Restzeit berechnet …</div>'
       + '<button id="calm-export-cancel" type="button" style="margin-top:12px;padding:6px 10px;border:1px solid #9ca3af;border-radius:6px;background:transparent;color:#f9fafb;cursor:pointer;font:inherit;font-size:12px">Export abbrechen</button>';
