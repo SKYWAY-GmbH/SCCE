@@ -30,6 +30,7 @@ jobs:
         env:
           ANTHROPIC_BASE_URL: http://192.168.60.63:8317
         with:
+          github_token: ${{ github.token }}
           anthropic_api_key: ${{ secrets.CLIPROXY_API_KEY }}
           prompt: |
             Review this pull request for:
