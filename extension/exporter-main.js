@@ -12,6 +12,7 @@
   const PAGE_SIZE = 100;
   const DETAIL_CONCURRENCY = 4;
   const DETAIL_RETRIES = 3;
+  const MAX_RETRY_DELAY = 10000;
   const SERVICE = '/ui/tmService-ui/v1/odata/v4/ManualTestCaseService/';
   const startedAt = performance.now();
   const state = { cancelled: false, controller: new AbortController() };
@@ -156,12 +157,17 @@
             const retryAfter = response.headers.get('Retry-After');
             const retrySeconds = Number(retryAfter);
             if (Number.isFinite(retrySeconds)) {
-              retryDelay = Math.min(10000, Math.max(400, retrySeconds * 1000));
+              retryDelay = Math.max(400, retrySeconds * 1000);
             } else {
               const retryAt = Date.parse(retryAfter || '');
               retryDelay = Number.isFinite(retryAt)
-                ? Math.min(10000, Math.max(400, retryAt - Date.now()))
+                ? Math.max(400, retryAt - Date.now())
                 : 800 * 2 ** (attempt - 1);
+            }
+            if (retryDelay > MAX_RETRY_DELAY) {
+              const rateLimitError = new Error('CALM begrenzt Anfragen für mehr als 10 Sekunden. Bitte später erneut versuchen.');
+              rateLimitError.retryable = false;
+              throw rateLimitError;
             }
           }
           throw new Error(`HTTP ${response.status} ${response.statusText || ''}`.trim());
@@ -200,11 +206,13 @@
   async function readDetails(rows) {
     const details = new Array(rows.length);
     const errors = [];
+    let terminalError;
     let next = 0;
     let completed = 0;
     progress.set('Details', 0, rows.length);
     async function worker() {
       while (true) {
+        if (terminalError) return;
         ensureRunning();
         const index = next++;
         if (index >= rows.length) return;
@@ -213,6 +221,13 @@
           if (!rowId) throw new Error('Testfall ohne UUID/ID in der Tabellenbindung.');
           details[index] = await fetchJson(rowId);
         } catch (error) {
+          if (error?.retryable === false) {
+            terminalError = error;
+            state.cancelled = true;
+            state.controller.abort();
+            return;
+          }
+          if (terminalError) return;
           errors.push({ id: rowId, error: String(error?.message || error) });
           details[index] = null;
         }
@@ -223,7 +238,13 @@
         }
       }
     }
-    await Promise.all(Array.from({ length: Math.min(DETAIL_CONCURRENCY, rows.length) }, worker));
+    try {
+      await Promise.all(Array.from({ length: Math.min(DETAIL_CONCURRENCY, rows.length) }, worker));
+    } catch (error) {
+      if (terminalError) throw terminalError;
+      throw error;
+    }
+    if (terminalError) throw terminalError;
     return { details, errors };
   }
 
