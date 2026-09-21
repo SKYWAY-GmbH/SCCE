@@ -114,6 +114,26 @@
     });
   }
 
+  function abortable(promise) {
+    return new Promise((resolve, reject) => {
+      const signal = state.controller.signal;
+      const abort = () => reject(new Error('Export vom Benutzer abgebrochen.'));
+      if (signal.aborted) {
+        abort();
+        return;
+      }
+      const cleanup = () => signal.removeEventListener('abort', abort);
+      signal.addEventListener('abort', abort, { once: true });
+      Promise.resolve(promise).then((valueToResolve) => {
+        cleanup();
+        resolve(valueToResolve);
+      }, (error) => {
+        cleanup();
+        reject(error);
+      });
+    });
+  }
+
   async function fetchJson(id) {
     const encoded = encodeURIComponent(id);
     const url = `${SERVICE}TestCases(${encoded})?$expand=tags`;
@@ -133,8 +153,16 @@
             throw authError;
           }
           if (response.status === 429) {
-            const retryAfter = Number(response.headers.get('Retry-After'));
-            retryDelay = Number.isFinite(retryAfter) ? Math.min(10000, Math.max(400, retryAfter * 1000)) : 800 * 2 ** (attempt - 1);
+            const retryAfter = response.headers.get('Retry-After');
+            const retrySeconds = Number(retryAfter);
+            if (Number.isFinite(retrySeconds)) {
+              retryDelay = Math.min(10000, Math.max(400, retrySeconds * 1000));
+            } else {
+              const retryAt = Date.parse(retryAfter || '');
+              retryDelay = Number.isFinite(retryAt)
+                ? Math.min(10000, Math.max(400, retryAt - Date.now()))
+                : 800 * 2 ** (attempt - 1);
+            }
           }
           throw new Error(`HTTP ${response.status} ${response.statusText || ''}`.trim());
         }
@@ -158,7 +186,7 @@
     const rows = [];
     for (let start = 0; start < total;) {
       ensureRunning();
-      const contexts = await binding.requestContexts(start, Math.min(PAGE_SIZE, total - start));
+      const contexts = await abortable(Promise.resolve().then(() => binding.requestContexts(start, Math.min(PAGE_SIZE, total - start))));
       if (!contexts.length) break;
       rows.push(...contexts.map((context) => context.getObject()));
       start += contexts.length;
