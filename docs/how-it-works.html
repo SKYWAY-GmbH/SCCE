@@ -124,7 +124,7 @@
 });</code></pre>
       <p>Der Code im Seitenkontext hat keine normalen Extension-APIs. Er verwendet UI5, <code>fetch</code> und DOM-APIs. Die Extension liefert die Datei lokal mit; das Skript wird weder aus einer URL nachgeladen noch per <code>eval</code> ausgeführt. Ein Service Worker ist für diesen ersten Ablauf nicht erforderlich.</p>
       <h3>Lokales Laden in Chrome</h3>
-      <ol><li><code>chrome://extensions</code> öffnen.</li><li>Developer mode einschalten.</li><li>Load unpacked wählen und den Ordner <code>extension</code> auswählen.</li><li>Cloud ALM öffnen, die gewünschte Testfallliste filtern und das SCCE-Symbol verwenden.</li></ol>
+      <ol><li><code>pnpm build</code> ausführen.</li><li><code>chrome://extensions</code> öffnen.</li><li>Developer mode einschalten.</li><li>Load unpacked wählen und den erzeugten Ordner <code>dist</code> auswählen.</li><li>Cloud ALM öffnen, die gewünschte Testfallliste filtern und das SCCE-Symbol verwenden.</li></ol>
     </section>
 
     <section>
@@ -158,7 +158,7 @@
         <li>Fortschrittsanzeige, Restzeit, Abbruch, abgelaufene Sitzung, leere Liste und erneuter Start sind im Browser geprüft.</li>
         <li>Die heruntergeladene Datei lässt sich in Excel ohne Reparaturmeldung öffnen; Filter und Kopfzeile funktionieren.</li>
       </ul>
-      <p><code>npm test</code> prüft aktuell nur JavaScript-Syntax. Das bestätigt weder die SAP-Schnittstelle noch den Ablauf in einer installierten Extension. Für die Weiterentwicklung sind synthetische API-Fixtures und anschließend ein Test in einem freigegebenen CALM-Tenant vorgesehen. Keine echten Kundenexporte oder Sitzungsdaten als öffentliche Fixtures ablegen.</p>
+      <p><code>pnpm test</code> prüft JavaScript-Syntax und das Manifest. <code>pnpm build</code> validiert den Manifest-V3-Build und erzeugt das installierbare <code>dist</code>-Artefakt. Das bestätigt weder die SAP-Schnittstelle noch den Ablauf in einer installierten Extension. Für die Weiterentwicklung sind synthetische API-Fixtures und anschließend ein Test in einem freigegebenen CALM-Tenant vorgesehen. Keine echten Kundenexporte oder Sitzungsdaten als öffentliche Fixtures ablegen.</p>
     </section>
     <section>
       <h2>Quellen und Einstieg in den Code</h2>
