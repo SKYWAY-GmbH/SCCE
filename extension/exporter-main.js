@@ -107,11 +107,15 @@
         reject(new Error('Export vom Benutzer abgebrochen.'));
         return;
       }
-      const timer = setTimeout(resolve, ms);
-      state.controller.signal.addEventListener('abort', () => {
+      const onAbort = () => {
         clearTimeout(timer);
         reject(new Error('Export vom Benutzer abgebrochen.'));
-      }, { once: true });
+      };
+      const timer = setTimeout(() => {
+        state.controller.signal.removeEventListener('abort', onAbort);
+        resolve();
+      }, ms);
+      state.controller.signal.addEventListener('abort', onAbort, { once: true });
     });
   }
 
@@ -155,7 +159,7 @@
           }
           if (response.status === 429) {
             const retryAfter = response.headers.get('Retry-After');
-            const retrySeconds = Number(retryAfter);
+            const retrySeconds = /^\d+$/.test(retryAfter || '') ? Number(retryAfter) : NaN;
             if (Number.isFinite(retrySeconds)) {
               retryDelay = Math.max(400, retrySeconds * 1000);
             } else {
