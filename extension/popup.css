@@ -4,7 +4,7 @@
   background: #eef2f0;
   color: #18231f;
   --ink: #18231f;
-  --muted: #687570;
+  --muted: #5d6a64;
   --line: #d6dfda;
   --panel: #f7faf8;
   --accent: #0d9f8b;
@@ -25,7 +25,7 @@ button { font: inherit; }
 .brand-mark { display: grid; width: 22px; height: 22px; place-items: center; border-radius: 6px 6px 6px 2px; background: var(--ink); color: #f2c66c; font-size: 12px; font-weight: 800; }
 .brand-name, .panel-kicker, .badge, .file-badge, .coming-soon { font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
 .brand-name { color: var(--muted); }
-.badge { margin-left: auto; padding: 5px 7px; border: 1px solid #ead7ad; border-radius: 999px; color: #956b1e; letter-spacing: .08em; }
+.badge { margin-left: auto; padding: 5px 7px; border: 1px solid #ead7ad; border-radius: 999px; color: #6b4f1f; letter-spacing: .08em; }
 .badge-ready { border-color: #b7ddd2; color: var(--accent-dark); }
 h1, h2, p { margin-top: 0; }
 h1 { margin: 24px 0 10px; color: var(--ink); font-size: 34px; font-weight: 750; letter-spacing: -.065em; line-height: .94; }
@@ -53,7 +53,7 @@ button:disabled { cursor: wait; opacity: .58; transform: none; }
 .meta-dot { width: 3px; height: 3px; border-radius: 50%; background: #9db0a8; }
 .next-tools { margin-top: 12px; padding: 13px 14px 14px; }
 .next-tools-heading { justify-content: space-between; }
-.coming-soon { color: #a0813c; letter-spacing: .08em; }
+.coming-soon { color: #7a5a1e; letter-spacing: .08em; }
 .placeholder-tool { display: flex; align-items: center; gap: 10px; margin-top: 11px; padding-top: 11px; border-top: 1px solid var(--line); }
 .placeholder-icon { display: grid; width: 25px; height: 25px; flex: 0 0 auto; place-items: center; border: 1px dashed #9fb7ad; border-radius: 6px; color: var(--accent); font-size: 17px; }
 .placeholder-tool strong, .placeholder-tool span { display: block; }
@@ -62,4 +62,4 @@ button:disabled { cursor: wait; opacity: .58; transform: none; }
 .status { min-height: 17px; margin: 0; color: var(--accent-dark); font-size: 12px; font-weight: 700; }
 .status.error { color: var(--danger); }
 .hint { margin: 4px 0 0; }
-@media (prefers-reduced-motion: reduce) { button { transition: none; } }
+@media (prefers-reduced-motion: reduce) { button { transition: none; } button:hover { transform: none; } }
