@@ -2,8 +2,10 @@
   "name": "scce",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@11.21.0",
   "description": "SCCE – Skyway CALM Chrome Extension",
   "scripts": {
-    "test": "node --check extension/popup.js && node --check extension/exporter-main.js"
+    "build": "node scripts/build.mjs",
+    "test": "node --check extension/popup.js && node --check extension/exporter-main.js && node --check scripts/build.mjs && node -e \"JSON.parse(require('fs').readFileSync('extension/manifest.json', 'utf8'));\""
   }
 }

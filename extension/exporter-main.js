@@ -14,12 +14,19 @@
   const DETAIL_RETRIES = 3;
   const SERVICE = '/ui/tmService-ui/v1/odata/v4/ManualTestCaseService/';
   const startedAt = performance.now();
-  const state = { cancelled: false };
+  const state = { cancelled: false, controller: new AbortController() };
   globalThis.__calmTestcaseExportRunning = true;
-  globalThis.__calmTestcaseExportCancel = () => { state.cancelled = true; };
+  globalThis.__calmTestcaseExportCancel = () => {
+    state.cancelled = true;
+    state.controller.abort();
+  };
 
   function findBinding() {
-    const candidates = Object.values(sap.ui.core.Element.registry.all())
+    const registry = globalThis.sap?.ui?.core?.Element?.registry;
+    if (!registry?.all) {
+      throw new Error('SAP Cloud ALM ist noch nicht vollständig geladen. Bitte die Testfallliste öffnen und erneut versuchen.');
+    }
+    const candidates = Object.values(registry.all())
       .filter((control) => control.isA?.('sap.m.Table'))
       .map((table) => ({ table, binding: table.getBinding?.('items') }))
       .filter(({ binding }) => binding && Number(binding.getLength?.()) >= 0);
@@ -40,10 +47,18 @@
     ].join(';');
     box.innerHTML = '<div id="calm-export-title" style="font-weight:700;margin-bottom:8px">SAP Cloud ALM Export</div>'
       + '<div id="calm-export-phase">Wird vorbereitet …</div>'
-      + '<div style="height:10px;background:#4b5563;border-radius:5px;margin:10px 0 7px;overflow:hidden">'
+      + '<div role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="height:10px;background:#4b5563;border-radius:5px;margin:10px 0 7px;overflow:hidden">'
       + '<div id="calm-export-bar" style="height:100%;width:0;background:#60a5fa;transition:width .2s"></div></div>'
-      + '<div id="calm-export-eta" style="color:#d1d5db;font-size:12px">Noch wird die Restzeit berechnet …</div>';
+      + '<div id="calm-export-eta" style="color:#d1d5db;font-size:12px">Noch wird die Restzeit berechnet …</div>'
+      + '<button id="calm-export-cancel" type="button" style="margin-top:12px;padding:6px 10px;border:1px solid #9ca3af;border-radius:6px;background:transparent;color:#f9fafb;cursor:pointer;font:inherit;font-size:12px">Export abbrechen</button>';
     document.body.appendChild(box);
+    const cancel = box.querySelector('#calm-export-cancel');
+    cancel.addEventListener('click', () => {
+      cancel.disabled = true;
+      cancel.textContent = 'Wird abgebrochen …';
+      globalThis.__calmTestcaseExportCancel?.();
+    });
+    const progressbar = box.querySelector('[role="progressbar"]');
     return {
       set(phase, done, total) {
         const elapsed = Math.max(0.001, (performance.now() - startedAt) / 1000);
@@ -55,6 +70,7 @@
             : `noch ca. ${Math.ceil(remaining / 60)} Minuten`;
         box.querySelector('#calm-export-phase').textContent = `${phase}: ${done} von ${total} gelesen`;
         box.querySelector('#calm-export-bar').style.width = `${Math.round(fraction * 100)}%`;
+        progressbar.setAttribute('aria-valuenow', String(Math.round(fraction * 100)));
         box.querySelector('#calm-export-eta').textContent = eta;
       },
       done(message, failed = false) {
@@ -63,6 +79,7 @@
         box.querySelector('#calm-export-eta').textContent = failed ? 'Details stehen in der Konsole.' : 'Die Excel-Datei wurde heruntergeladen.';
         box.querySelector('#calm-export-bar').style.background = failed ? '#f87171' : '#34d399';
         if (!failed) box.querySelector('#calm-export-bar').style.width = '100%';
+        cancel.remove();
         setTimeout(() => box.remove(), failed ? 15000 : 8000);
       },
     };
@@ -70,7 +87,7 @@
 
   const progress = makeProgress();
   function ensureRunning() {
-    if (state.cancelled) throw new Error('Export vom Benutzer abgebrochen.');
+    if (state.cancelled || state.controller.signal.aborted) throw new Error('Export vom Benutzer abgebrochen.');
   }
   function value(value) {
     if (value == null) return '';
@@ -83,16 +100,44 @@
     const date = new Date(valueToFormat);
     return Number.isNaN(date.getTime()) ? value(valueToFormat) : date.toLocaleString('de-DE');
   }
-  function sleep(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
+  function sleep(ms) {
+    return new Promise((resolve, reject) => {
+      if (state.controller.signal.aborted) {
+        reject(new Error('Export vom Benutzer abgebrochen.'));
+        return;
+      }
+      const timer = setTimeout(resolve, ms);
+      state.controller.signal.addEventListener('abort', () => {
+        clearTimeout(timer);
+        reject(new Error('Export vom Benutzer abgebrochen.'));
+      }, { once: true });
+    });
+  }
 
   async function fetchJson(id) {
     const encoded = encodeURIComponent(id);
     const url = `${SERVICE}TestCases(${encoded})?$expand=tags`;
     let lastError = new Error('Keine Detailantwort erhalten.');
     for (let attempt = 1; attempt <= DETAIL_RETRIES; attempt += 1) {
+      let retryDelay = 0;
       try {
-        const response = await fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json' } });
-        if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText || ''}`.trim());
+        const response = await fetch(url, {
+          credentials: 'same-origin',
+          headers: { Accept: 'application/json' },
+          signal: state.controller.signal,
+        });
+        if (!response.ok) {
+          if (response.status === 401 || response.status === 403) {
+            const authError = new Error('Die CALM-Sitzung ist abgelaufen oder hat keine Berechtigung für Testfalldetails.');
+            authError.retryable = false;
+            throw authError;
+          }
+          if (response.status === 429) {
+            const retryAfter = Number(response.headers.get('Retry-After'));
+            retryDelay = Number.isFinite(retryAfter) ? Math.min(10000, Math.max(400, retryAfter * 1000)) : 800 * 2 ** (attempt - 1);
+          }
+          throw new Error(`HTTP ${response.status} ${response.statusText || ''}`.trim());
+        }
         const json = await response.json();
         const hasTags = Object.prototype.hasOwnProperty.call(json, 'tags')
           || Object.prototype.hasOwnProperty.call(json?.manualtestcase || {}, 'tags');
@@ -100,7 +145,8 @@
         return json;
       } catch (error) {
         lastError = error;
-        if (attempt < DETAIL_RETRIES) await sleep(400 * 2 ** (attempt - 1));
+        if (error?.retryable === false) throw error;
+        if (attempt < DETAIL_RETRIES) await sleep(retryDelay || 400 * 2 ** (attempt - 1));
       }
     }
     throw lastError;
